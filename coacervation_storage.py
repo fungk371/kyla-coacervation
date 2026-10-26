@@ -70,7 +70,9 @@ class FileStorage:
 
     def restore(self):
         remote = set()
-        for blob in self.container.list_blobs(name_starts_with=PREFIX):
+        for blob in self.container.list_blobs(name_starts_with=PREFIX, include=["metadata"]):
+            if str((blob.metadata or {}).get("hdi_isfolder", "")).lower() == "true":
+                continue
             name = blob.name[len(PREFIX):]
             path = (self.root / name).resolve()
             if self.root not in path.parents:
