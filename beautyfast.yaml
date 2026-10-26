@@ -1,0 +1,4 @@
+# Written by "bf deploy". It links this folder to its app on BeautyFast, so the next
+# "bf deploy" updates that app instead of creating a new one. Commit it with your code.
+app_uuid: 5c6f3f28-d8cb-4ea9-8be3-1578281590fb
+server: https://beautyfast-prod.pg.com
