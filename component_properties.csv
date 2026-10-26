@@ -1,0 +1,17 @@
+component,type,mw_kda,charge_density_meq_g,notes
+3196,polymer,250,1.2,EXAMPLE - replace with measured values
+CD2,polymer,180,0.8,EXAMPLE - replace with measured values
+Dex-A,polymer,120,0.6,EXAMPLE - replace with measured values
+Dex-B,polymer,200,1.0,EXAMPLE - replace with measured values
+Dex-B*,polymer,210,1.1,EXAMPLE - replace with measured values
+Dex-J,polymer,300,1.6,EXAMPLE - replace with measured values
+Dex-J*,polymer,320,1.7,EXAMPLE - replace with measured values
+Dex-K,polymer,420,2.2,EXAMPLE - replace with measured values
+SLES,surfactant,0.42,2.38,EXAMPLE - replace with measured values
+SLS,surfactant,0.288,3.47,EXAMPLE - replace with measured values
+SCG,surfactant,0.35,2.5,EXAMPLE - replace with measured values
+LAPB,surfactant,0.34,0,EXAMPLE - zwitterionic; replace with measured values
+Polyquat-47,polymer,1200,0.2,Merquat 2001 INCI PQ-47; MW 1.2e6 Da; CD 0.2 meq/g @ pH5.8 (Lubrizol)
+Polyquat-53,polymer,1200,2.4,Merquat 2003PR INCI PQ-53; MW 1.2e6 Da; CD 2.4 meq/g @ pH5.8 (Lubrizol)
+PQ-47,polymer,1200,0.2,alias of Polyquat-47 / Merquat 2001
+PQ-53,polymer,1200,2.4,alias of Polyquat-53 / Merquat 2003PR

@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surfactant Phase Diagram Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Surfactant Phase Diagram Analysis</h1>
+            <p class="subtitle">Comprehensive platform for phase diagram data management and visualization</p>
+        </header>
+
+        <!-- Database Status Bar -->
+        <div class="db-status-bar" id="dbStatusBar">
+            <span id="dbStatusText">Checking database...</span>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab(event, 'ingestTab')">📊 Data Ingestion</button>
+            <button class="tab-button" onclick="openTab(event, 'analysisTab')">🔬 Phase Analysis</button>
+            <button class="tab-button" onclick="openTab(event, 'queryTab')">🔍 Data Query</button>
+            <button class="tab-button" onclick="openTab(event, 'exportTab')">📤 Export Data</button>
+        </div>
+
+        <!-- TAB 1: DATA INGESTION -->
+        <div id="ingestTab" class="tab-content active">
+            <section class="card">
+                <h2>Ingest New Experiment</h2>
+                
+                <form id="ingestForm" onsubmit="ingestExperiment(event)">
+                    <div class="form-group">
+                        <label for="excelFile">Excel Design File *</label>
+                        <input type="file" id="excelFile" accept=".xlsx,.xls" required 
+                               class="form-control" onchange="handleExcelUpload(this)">
+                        <small>Must contain 'Volumes' and 'Test Solutions' sheets</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="transmissionFiles">Transmission Data Files *</label>
+                        <input type="file" id="transmissionFiles" accept=".txt" multiple required 
+                               class="form-control" onchange="handleTransmissionUpload(this)">
+                        <small>Select all .txt transmission measurement files</small>
+                    </div>
+
+                    <div id="metadata" class="metadata-box" style="display:none;">
+                        <h3>Detected Metadata</h3>
+                        <div id="metadataContent"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large">
+                        Ingest Experiment
+                    </button>
+                </form>
+            </section>
+
+            <!-- Database Experiments List -->
+            <section class="card">
+                <h2>Database Contents</h2>
+                <div id="experimentsListIngest"></div>
+                <button onclick="checkDatabase()" class="btn btn-secondary">Refresh</button>
+            </section>
+        </div>
+
+        <!-- TAB 2: PHASE ANALYSIS -->
+        <div id="analysisTab" class="tab-content">
+            <section class="card">
+                <h2>Phase Diagram Visualization</h2>
+                
+                <div class="analysis-controls">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="analysisExperiment">Select Experiment</label>
+                            <select id="analysisExperiment" class="form-control" onchange="loadTimepoints()">
+                                <option value="">-- Select Experiment --</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="analysisTimepoint">Select Timepoint</label>
+                            <select id="analysisTimepoint" class="form-control">
+                                <option value="">-- Select Timepoint --</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phaseThreshold">Phase Threshold (%)</label>
+                            <input type="number" id="phaseThreshold" class="form-control" 
+                                   value="75.0" step="1.0" min="0" max="100">
+                            <small>Transmission threshold for phase boundary</small>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button onclick="generatePhaseDiagram()" class="btn btn-primary">
+                            Generate Phase Diagram
+                        </button>
+                        <button onclick="generateKineticAnalysis()" class="btn btn-primary">
+                            Kinetic Analysis
+                        </button>
+                    </div>
+                </div>
+
+                <div id="analysisLoading" class="loading-spinner" style="display:none;">
+                    <div class="spinner"></div>
+                    <p>Generating visualization...</p>
+                </div>
+
+                <div id="analysisResults" class="analysis-results" style="display:none;">
+                   <h3 id="analysisResultsTitle"></h3>
+                    <img id="analysisImage" src="" alt="Analysis Result" class="analysis-image">
+                    <button onclick="downloadImage()" class="btn btn-secondary">Download Image</button>
+                </div>
+            </section>
+
+            <!-- Absorbance vs Surfactant Concentration Analysis -->
+            <section class="card">
+                <h2>Absorbance vs Surfactant Concentration</h2>
+                
+                <div class="info-box">
+                    <p><strong>ℹ Analysis Info:</strong> Converts transmission to absorbance (A = 2 - log₁₀(T%)), 
+                    then sums absorbance across all polymer concentrations for each surfactant level. 
+                    You can overlay multiple timepoints for comparison.</p>
+                </div>
+
+                <div class="analysis-controls">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="absorbanceExperiment">Select Experiment</label>
+                            <select id="absorbanceExperiment" class="form-control" onchange="loadAbsorbanceTimepoints()">
+                                <option value="">-- Select Experiment --</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="absorbanceTimepoint">Select Timepoint</label>
+                            <select id="absorbanceTimepoint" class="form-control">
+                                <option value="">-- Select Timepoint --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button onclick="addAbsorbanceCurve()" class="btn btn-primary">
+                            Add Curve to Plot
+                        </button>
+                        <button onclick="clearAbsorbancePlot()" class="btn btn-secondary">
+                            Clear Plot
+                        </button>
+                    </div>
+                </div>
+
+                <div id="absorbanceLoading" class="loading-spinner" style="display:none;">
+                    <div class="spinner"></div>
+                    <p>Generating absorbance plot...</p>
+                </div>
+
+                <div id="absorbanceResults" class="analysis-results" style="display:none;">
+                    <h3>Total Absorbance vs Surfactant Concentration</h3>
+                    <img id="absorbanceImage" src="" alt="Absorbance Plot" class="analysis-image">
+                    <button onclick="downloadAbsorbanceImage()" class="btn btn-secondary">Download Image</button>
+                </div>
+            </section>
+
+            <!-- Absorbance Over Time Heatmap -->
+            <section class="card">
+                <h2>Absorbance Evolution Heatmap</h2>
+                
+                <div class="info-box">
+                    <p><strong>ℹ Analysis Info:</strong> Heatmap showing how total absorbance evolves over time. X-axis: Surfactant concentration, Y-axis: Time, Color intensity: Total absorbance (summed across polymer levels).</p>
+                </div>
+
+                <div class="analysis-controls">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="absorbance3dExperiment">Select Experiment</label>
+                            <select id="absorbance3dExperiment" class="form-control">
+                                <option value="">-- Select Experiment --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button onclick="generate3dAbsorbancePlot()" class="btn btn-primary">
+                            Generate Heatmap
+                        </button>
+                    </div>
+                </div>
+
+                <div id="absorbance3dLoading" class="loading-spinner" style="display:none;">
+                    <div class="spinner"></div>
+                    <p>Generating heatmap...</p>
+                </div>
+
+                <div id="absorbance3dResults" class="analysis-results" style="display:none;">
+                    <h3>Absorbance Heatmap</h3>
+                    <img id="absorbance3dImage" src="" alt="Absorbance Heatmap" class="analysis-image">
+                    <button onclick="downloadAbsorbance3dImage()" class="btn btn-secondary">Download Image</button>
+                </div>
+            </section>
+
+            <!-- Dilution (%T) Curve Analogues -->
+            <section class="card">
+                <h2>Dilution (%T) Curve Analogues</h2>
+
+                <div class="info-box">
+                    <p><strong>&#x1F4C8; Analysis Info:</strong> Replicates the classical shampoo %T dilution curve.
+                    Each curve traces a fixed surfactant:polymer weight ratio through the interpolated phase diagram,
+                    from concentrated (left) to dilute (right). Curves are extracted from the GP-interpolated surface
+                    at the selected timepoint. Four ratios spanning the typical conditioning-shampoo range (8:1&ndash;15:1)
+                    are available; deselect any that fall outside the measured composition grid.</p>
+                </div>
+
+                <div class="analysis-controls">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dilutionExperiment">Select Experiment</label>
+                            <select id="dilutionExperiment" class="form-control" onchange="loadDilutionTimepoints()">
+                                <option value="">-- Select Experiment --</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="dilutionTimepoint">Select Timepoint</label>
+                            <select id="dilutionTimepoint" class="form-control">
+                                <option value="">-- Select Timepoint --</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <div class="form-group">
+                        <label>Surfactant:Polymer Ratios to Show</label>
+                        <div class="form-row" style="gap:1rem;flex-wrap:wrap;">
+                            <label><input type="checkbox" id="ratio_8" value="8" checked> 8:1</label>
+                            <label><input type="checkbox" id="ratio_10" value="10" checked> 10:1</label>
+                            <label><input type="checkbox" id="ratio_12" value="12" checked> 12:1</label>
+                            <label><input type="checkbox" id="ratio_15" value="15" checked> 15:1</label>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button onclick="generateDilutionCurves()" class="btn btn-primary">
+                            Generate Dilution Curves
+                        </button>
+                    </div>
+                </div>
+
+                <div id="dilutionLoading" class="loading-spinner" style="display:none;">
+                    <div class="spinner"></div>
+                    <p>Fitting interpolator and sampling ratio curves&hellip;</p>
+                </div>
+
+                <div id="dilutionResults" class="analysis-results" style="display:none;">
+                    <h3 id="dilutionResultsTitle">Dilution (%T) Curve Analogues</h3>
+                    <img id="dilutionImage" src="" alt="Dilution Curves" class="analysis-image">
+                    <button onclick="downloadDilutionImage()" class="btn btn-secondary">Download Image</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- TAB 3: DATA QUERY -->
+        <div id="queryTab" class="tab-content">
+            <section class="card">
+                <h2>Query Experiment Data</h2>
+                
+                <form id="queryForm" onsubmit="queryData(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="queryExperimentId">Experiment ID</label>
+                            <input type="text" id="queryExperimentId" 
+                                   placeholder="Leave empty for all" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="querySurfactant">Surfactant</label>
+                            <input type="text" id="querySurfactant" 
+                                   placeholder="e.g., Rhamnolipid" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="queryPolymer">Polymer</label>
+                            <input type="text" id="queryPolymer" 
+                                   placeholder="e.g., Excel" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="queryMinTimepoint">Min Timepoint (minutes)</label>
+                            <input type="number" id="queryMinTimepoint" step="0.1" 
+                                   placeholder="e.g., 10.0 for equilibrium" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="queryWaterHardness">Water Hardness (gpg)</label>
+                            <input type="number" id="queryWaterHardness" step="0.1" 
+                                   placeholder="Leave empty for all" class="form-control">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Query Data</button>
+                </form>
+
+                <div id="queryResults" style="display:none;">
+                    <h3>Query Results</h3>
+                    <div id="queryResultsContent"></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- TAB 4: DATA EXPORT -->
+        <div id="exportTab" class="tab-content">
+            <section class="card">
+                <h2>Export Data for Modeling</h2>
+                
+                <div class="info-box">
+                    <p><strong>Export Options:</strong> Download data in various formats optimized for different workflows.</p>
+                </div>
+
+                <!-- Data Summary -->
+                <div id="exportSummary" class="summary-box" style="margin-bottom: 20px;">
+                    <h3>Data Summary</h3>
+                    <div id="exportSummaryContent">Loading...</div>
+                </div>
+
+                <!-- Standard Export -->
+                <div class="export-section">
+                    <h3>Standard Export</h3>
+                    <p>Export raw data with optional derived columns (absorbance, log concentrations, etc.)</p>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="exportFormat">Export Format</label>
+                            <select id="exportFormat" class="form-control">
+                                <option value="csv" selected>CSV (Universal)</option>
+                                <option value="excel">Excel (.xlsx with Summary)</option>
+                                <option value="json">JSON (API-friendly)</option>
+                                <option value="parquet">Parquet (Fast ML loading)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="exportDerived">Include Derived Columns</label>
+                            <select id="exportDerived" class="form-control">
+                                <option value="true" selected>Yes - Add absorbance, log conc., ratios</option>
+                                <option value="false">No - Raw data only</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <details style="margin-bottom: 15px;">
+                        <summary style="cursor: pointer; font-weight: bold; margin-bottom: 10px;">
+                            🔧 Filter Options (click to expand)
+                        </summary>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="exportSurfactant">Filter by Surfactant</label>
+                                <select id="exportSurfactant" class="form-control" multiple style="height: 80px;">
+                                </select>
+                                <small>Ctrl+click to select multiple. Leave empty for all.</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="exportPolymer">Filter by Polymer</label>
+                                <select id="exportPolymer" class="form-control" multiple style="height: 80px;">
+                                </select>
+                                <small>Ctrl+click to select multiple. Leave empty for all.</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="exportMinTime">Min Timepoint (minutes)</label>
+                                <input type="number" id="exportMinTime" class="form-control" step="0.1" placeholder="Leave empty for all">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="exportMaxTime">Max Timepoint (minutes)</label>
+                                <input type="number" id="exportMaxTime" class="form-control" step="0.1" placeholder="Leave empty for all">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="exportExperiments">Filter by Experiments</label>
+                            <select id="exportExperiments" class="form-control" multiple style="height: 100px;">
+                            </select>
+                            <small>Ctrl+click to select multiple. Leave empty for all.</small>
+                        </div>
+                    </details>
+
+                    <button onclick="downloadExport()" class="btn btn-primary">
+                        📥 Download Export
+                    </button>
+                </div>
+
+                <!-- ML-Ready Export -->
+                <div class="export-section" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #444;">
+                    <h3>🤖 ML-Ready Export</h3>
+                    <p>Export pre-processed feature matrix (X) and target vector (y) ready for scikit-learn. Includes example Python script.</p>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="mlTarget">Target Variable</label>
+                            <select id="mlTarget" class="form-control">
+                                <option value="transmission_pct" selected>Transmission % (Regression)</option>
+                                <option value="absorbance">Absorbance (Regression)</option>
+                                <option value="phase_binary">Phase Binary: Clear vs Turbid (Classification)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="mlTimeFilter">Time Filter</label>
+                            <select id="mlTimeFilter" class="form-control">
+                                <option value="equilibrium" selected>Equilibrium (Max timepoint per experiment)</option>
+                                <option value="all">All Timepoints</option>
+                                <option value="60">60 minutes only</option>
+                                <option value="30">30 minutes only</option>
+                                <option value="10">10 minutes only</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="info-box" style="background: #1a2a1a; border-left-color: #4a9;">
+                        <p><strong>📦 Includes:</strong></p>
+                        <ul style="margin: 5px 0; padding-left: 20px;">
+                            <li><code>X_features.csv</code> - Feature matrix with numerical and one-hot encoded features</li>
+                            <li><code>y_target.csv</code> - Target variable with experiment IDs</li>
+                            <li><code>metadata.json</code> - Feature names, sample counts, export details</li>
+                            <li><code>example_usage.py</code> - Ready-to-run scikit-learn example</li>
+                        </ul>
+                    </div>
+
+                    <button onclick="downloadMLExport()" class="btn btn-success" style="background: #2a7a4a;">
+                        🚀 Download ML-Ready Package (.zip)
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <!-- Log Section -->
+        <section class="card">
+            <h2>Activity Log</h2>
+            <div id="logBox" class="log-box"></div>
+            <button onclick="clearLog()" class="btn btn-secondary">Clear Log</button>
+        </section>
+    </div>
+
+    <script>
+        // Check database and load experiments on page load
+        window.onload = function() {
+            checkDatabase();
+            loadAnalysisExperiments();
+            loadExportSummary();
+        };
+
+        function log(message, type = 'info') {
+            const logBox = document.getElementById('logBox');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logBox.appendChild(entry);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('logBox').innerHTML = '';
+        }
+
+        // Tab switching
+        function openTab(evt, tabName) {
+            const tabContents = document.getElementsByClassName('tab-content');
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove('active');
+            }
+            
+            const tabButtons = document.getElementsByClassName('tab-button');
+            for (let i = 0; i < tabButtons.length; i++) {
+                tabButtons[i].classList.remove('active');
+            }
+            
+            document.getElementById(tabName).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+
+        async function checkDatabase() {
+            try {
+                // Add timestamp to prevent caching
+                const response = await fetch('/api/check_database?_=' + new Date().getTime());
+                const data = await response.json();
+                
+                const statusBar = document.getElementById('dbStatusBar');
+                const statusText = document.getElementById('dbStatusText');
+                
+                if (data.exists) {
+                    statusBar.className = 'db-status-bar db-status-success';
+                    statusText.textContent = `✓ Database Active: ${data.row_count} measurements from ${data.experiment_count} experiments | Path: ${data.db_path}`;
+                    
+                    // Update experiments list in ingest tab
+                    const experimentsDiv = document.getElementById('experimentsListIngest');
+                    if (data.experiments && data.experiments.length > 0) {
+                        experimentsDiv.innerHTML = `
+                            <div class="experiment-list">
+                                <h4>Recent Experiments:</h4>
+                                <ul>
+                                    ${data.experiments.map(exp => `
+                                        <li>
+                                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                <div>
+                                                    <strong>${exp.id}</strong> - ${exp.name}
+                                                    <br><small>${exp.measurements} measurements | ${exp.water_hardness !== null && exp.water_hardness !== undefined ? exp.water_hardness + ' gpg' : 'No hardness data'}</small>
+                                                </div>
+                                                <button onclick="deleteExperiment('${exp.id}', '${exp.name}')" class="btn btn-danger" style="margin-left: 10px; padding: 5px 10px; font-size: 12px;">Delete</button>
+                                            </div>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }
+                    
+                    log('✓ Database connected', 'success');
+                } else {
+                    statusBar.className = 'db-status-bar db-status-warning';
+                    statusText.textContent = `⚠ Database not found at: ${data.db_path}`;
+                    log('⚠ Database not found', 'warning');
+                }
+            } catch (error) {
+                const statusBar = document.getElementById('dbStatusBar');
+                const statusText = document.getElementById('dbStatusText');
+                statusBar.className = 'db-status-bar db-status-error';
+                statusText.textContent = '✗ Error connecting to database';
+                log('✗ Error checking database: ' + error, 'error');
+            }
+        }
+
+        // === INGEST TAB FUNCTIONS ===
+        
+        async function handleExcelUpload(input) {
+            if (!input.files || input.files.length === 0) return;
+            
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('file_type', 'excel');
+            
+            log('Analyzing Excel file...', 'info');
+            
+            try {
+                const response = await fetch('/api/extract_metadata', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    const data = result.data;
+                    
+                    const metadataBox = document.getElementById('metadata');
+                    const metadataContent = document.getElementById('metadataContent');
+                    
+                    metadataContent.innerHTML = `
+                        <p><strong>📄 Filename:</strong> ${data.filename}</p>
+                        <p><strong>💧 Water Hardness (auto-detected):</strong> ${data.water_hardness} gpg</p>
+                        ${data.surfactant ? `<p><strong>🧪 Surfactant:</strong> ${data.surfactant}</p>` : ''}
+                        ${data.polymer ? `<p><strong>🧬 Polymer:</strong> ${data.polymer}</p>` : ''}
+                        ${data.surfactant && data.polymer ? `<p><strong>🆔 Experiment Name (will be auto-generated):</strong> ${data.surfactant}-${data.polymer} (${data.water_hardness}gpg)</p>` : ''}
+                    `;
+                    
+                    metadataBox.style.display = 'block';
+                    log('✓ Metadata extracted - ready for ingestion', 'success');
+                }
+            } catch (error) {
+                log('⚠ Could not extract metadata: ' + error, 'warning');
+            }
+        }
+
+        function handleTransmissionUpload(input) {
+            if (!input.files || input.files.length === 0) return;
+            log(`✓ Selected ${input.files.length} transmission files`, 'success');
+        }
+
+        async function ingestExperiment(event) {
+            event.preventDefault();
+            
+            const form = document.getElementById('ingestForm');
+            const formData = new FormData();
+            
+            const excelFile = document.getElementById('excelFile').files[0];
+            const transmissionFiles = document.getElementById('transmissionFiles').files;
+            
+            formData.append('excel_file', excelFile);
+            for (let i = 0; i < transmissionFiles.length; i++) {
+                formData.append('transmission_files', transmissionFiles[i]);
+            }
+            
+            log('Starting experiment ingestion...', 'info');
+            
+            try {
+                const response = await fetch('/api/ingest_experiment', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log('✓ ' + result.message, 'success');
+                    form.reset();
+                    document.getElementById('metadata').style.display = 'none';
+                    checkDatabase();
+                    loadAnalysisExperiments();
+                } else {
+                    log('✗ Error: ' + result.error, 'error');
+                    if (result.traceback) {
+                        console.error(result.traceback);
+                    }
+                }
+            } catch (error) {
+                log('✗ Ingestion failed: ' + error, 'error');
+            }
+        }
+
+        // === ANALYSIS TAB FUNCTIONS ===
+        
+        async function loadAnalysisExperiments() {
+            try {
+                const response = await fetch('/api/analysis/get_experiments');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const select = document.getElementById('analysisExperiment');
+                    const absorbanceSelect = document.getElementById('absorbanceExperiment');
+                    const absorbance3dSelect = document.getElementById('absorbance3dExperiment');
+                    const dilutionSelect = document.getElementById('dilutionExperiment');
+                    
+                    select.innerHTML = '<option value="">-- Select Experiment --</option>';
+                    absorbanceSelect.innerHTML = '<option value="">-- Select Experiment --</option>';
+                    absorbance3dSelect.innerHTML = '<option value="">-- Select Experiment --</option>';
+                    dilutionSelect.innerHTML = '<option value="">-- Select Experiment --</option>';
+                    
+                    result.experiments.forEach(exp => {
+                        const option = document.createElement('option');
+                        option.value = exp.experiment_id;
+                        option.textContent = `${exp.experiment_id}: ${exp.surfactant_name}-${exp.polymer_name} (${exp.water_hardness_gpg}gpg, ${exp.records} records)`;
+                        option.dataset.experiment = JSON.stringify(exp);
+                        select.appendChild(option);
+                        
+                        // Clone for absorbance dropdown
+                        const absOption = option.cloneNode(true);
+                        absorbanceSelect.appendChild(absOption);
+                        
+                        // Clone for 3D absorbance dropdown
+                        const abs3dOption = option.cloneNode(true);
+                        absorbance3dSelect.appendChild(abs3dOption);
+                        
+                        // Clone for dilution curves dropdown
+                        const dilutionOption = option.cloneNode(true);
+                        dilutionSelect.appendChild(dilutionOption);
+                    });
+                    
+                    log('✓ Loaded experiments for analysis', 'success');
+                }
+            } catch (error) {
+                log('⚠ Could not load experiments: ' + error, 'warning');
+            }
+        }
+
+        async function loadTimepoints() {
+            const select = document.getElementById('analysisExperiment');
+            const experimentId = select.value;
+            
+            if (!experimentId) return;
+            
+            try {
+                const response = await fetch('/api/analysis/get_timepoints', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({experiment_id: experimentId})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const timepointSelect = document.getElementById('analysisTimepoint');
+                    timepointSelect.innerHTML = '<option value="">-- Select Timepoint --</option>';
+                    
+                    result.timepoints.forEach(tp => {
+                        const option = document.createElement('option');
+                        option.value = tp.timepoint_minutes;
+                        option.textContent = `${tp.timepoint_minutes.toFixed(2)} min (${tp.wells} wells)`;
+                        timepointSelect.appendChild(option);
+                    });
+                    
+                    log(`✓ Loaded ${result.timepoints.length} timepoints`, 'success');
+                }
+            } catch (error) {
+                log('✗ Error loading timepoints: ' + error, 'error');
+            }
+        }
+
+        async function generatePhaseDiagram() {
+            const experimentId = document.getElementById('analysisExperiment').value;
+            const timepoint = document.getElementById('analysisTimepoint').value;
+            const threshold = document.getElementById('phaseThreshold').value;
+            
+            if (!experimentId || !timepoint) {
+                log('⚠ Please select experiment and timepoint', 'warning');
+                return;
+            }
+            
+            document.getElementById('analysisLoading').style.display = 'block';
+            document.getElementById('analysisResults').style.display = 'none';
+            
+            log('Generating phase diagram...', 'info');
+            
+            try {
+                const response = await fetch('/api/analysis/generate_phase_diagram', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        experiment_id: experimentId,
+                        timepoint: parseFloat(timepoint),
+                        threshold: parseFloat(threshold)
+                    })
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('analysisLoading').style.display = 'none';
+                
+                if (result.success) {
+                    document.getElementById('analysisImage').src = 'data:image/png;base64,' + result.image;
+                    document.getElementById('analysisResultsTitle').textContent = `Phase Diagram at ${timepoint} minutes`;
+                    document.getElementById('analysisResults').style.display = 'block';
+                    log('✓ Phase diagram generated successfully', 'success');
+                } else {
+                    log('✗ Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                document.getElementById('analysisLoading').style.display = 'none';
+                log('✗ Failed to generate diagram: ' + error, 'error');
+            }
+        }
+
+        async function generateKineticAnalysis() {
+            const experimentId = document.getElementById('analysisExperiment').value;
+            
+            if (!experimentId) {
+                log('⚠ Please select an experiment', 'warning');
+                return;
+            }
+            
+            document.getElementById('analysisLoading').style.display = 'block';
+            document.getElementById('analysisResults').style.display = 'none';
+            
+            log('Performing kinetic analysis...', 'info');
+            
+            try {
+                const response = await fetch('/api/analysis/kinetic_analysis', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({experiment_id: experimentId})
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('analysisLoading').style.display = 'none';
+                
+                if (result.success) {
+                    document.getElementById('analysisImage').src = 'data:image/png;base64,' + result.image;
+                    document.getElementById('analysisResultsTitle').textContent = 'Kinetic Analysis';
+                    document.getElementById('analysisResults').style.display = 'block';
+                    log('✓ Kinetic analysis completed', 'success');
+                } else {
+                    log('✗ Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                document.getElementById('analysisLoading').style.display = 'none';
+                log('✗ Failed to perform analysis: ' + error, 'error');
+            }
+        }
+
+        function downloadImage() {
+            const img = document.getElementById('analysisImage');
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'phase_diagram_' + new Date().getTime() + '.png';
+            link.click();
+        }
+
+        // === ABSORBANCE ANALYSIS FUNCTIONS ===
+        
+        let absorbanceCurves = [];  // Store curves to overlay
+        
+        async function loadAbsorbanceTimepoints() {
+            const select = document.getElementById('absorbanceExperiment');
+            const experimentId = select.value;
+            
+            if (!experimentId) return;
+            
+            try {
+                const response = await fetch('/api/analysis/get_timepoints', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({experiment_id: experimentId})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const timepointSelect = document.getElementById('absorbanceTimepoint');
+                    timepointSelect.innerHTML = '<option value="">-- Select Timepoint --</option>';
+                    
+                    result.timepoints.forEach(tp => {
+                        const option = document.createElement('option');
+                        option.value = tp.timepoint_minutes;
+                        option.textContent = `${tp.timepoint_minutes.toFixed(2)} min (${tp.wells} wells)`;
+                        timepointSelect.appendChild(option);
+                    });
+                    
+                    log('✓ Loaded timepoints for absorbance analysis', 'success');
+                }
+            } catch (error) {
+                log('⚠ Could not load timepoints: ' + error, 'warning');
+            }
+        }
+        
+        async function addAbsorbanceCurve() {
+            const experimentId = document.getElementById('absorbanceExperiment').value;
+            const timepoint = document.getElementById('absorbanceTimepoint').value;
+            
+            if (!experimentId || !timepoint) {
+                log('⚠ Please select an experiment and timepoint', 'warning');
+                return;
+            }
+            
+            document.getElementById('absorbanceLoading').style.display = 'block';
+            document.getElementById('absorbanceResults').style.display = 'none';
+            
+            log(`Adding absorbance curve for timepoint ${timepoint} min...`, 'info');
+            
+            try {
+                // Add this timepoint to our curves array
+                const experimentSelect = document.getElementById('absorbanceExperiment');
+                const experimentName = experimentSelect.options[experimentSelect.selectedIndex].text;
+                
+                absorbanceCurves.push({
+                    experiment_id: experimentId,
+                    experiment_name: experimentName,
+                    timepoint: parseFloat(timepoint)
+                });
+                
+                // Generate the plot with all curves
+                const response = await fetch('/api/analysis/absorbance_plot', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({curves: absorbanceCurves})
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('absorbanceLoading').style.display = 'none';
+                
+                if (result.success) {
+                    document.getElementById('absorbanceImage').src = 'data:image/png;base64,' + result.image;
+                    document.getElementById('absorbanceResults').style.display = 'block';
+                    log(`✓ Added curve: ${experimentName} @ ${timepoint} min (${absorbanceCurves.length} total curves)`, 'success');
+                } else {
+                    log('✗ Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                document.getElementById('absorbanceLoading').style.display = 'none';
+                log('✗ Failed to generate absorbance plot: ' + error, 'error');
+            }
+        }
+        
+        function clearAbsorbancePlot() {
+            absorbanceCurves = [];
+            document.getElementById('absorbanceResults').style.display = 'none';
+            log('Plot cleared', 'info');
+        }
+        
+        function downloadAbsorbanceImage() {
+            const img = document.getElementById('absorbanceImage');
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'absorbance_plot_' + new Date().getTime() + '.png';
+            link.click();
+        }
+
+        // === 3D ABSORBANCE PLOT ===
+        
+        async function generate3dAbsorbancePlot() {
+            const select = document.getElementById('absorbance3dExperiment');
+            const experimentId = select.value;
+            
+            if (!experimentId) {
+                alert('Please select an experiment');
+                return;
+            }
+            
+            const selectedOption = select.options[select.selectedIndex];
+            const experimentName = selectedOption.textContent;
+            
+            document.getElementById('absorbance3dLoading').style.display = 'block';
+            document.getElementById('absorbance3dResults').style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/analysis/absorbance_3d_plot', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        experiment_id: experimentId,
+                        experiment_name: experimentName
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const img = document.getElementById('absorbance3dImage');
+                    img.src = 'data:image/png;base64,' + result.image;
+                    document.getElementById('absorbance3dResults').style.display = 'block';
+                    log('✓ Absorbance heatmap generated', 'success');
+                } else {
+                    log('✗ Error: ' + result.error, 'error');
+                    if (result.traceback) {
+                        console.error(result.traceback);
+                    }
+                }
+            } catch (error) {
+                log('✗ Error generating heatmap: ' + error, 'error');
+            } finally {
+                document.getElementById('absorbance3dLoading').style.display = 'none';
+            }
+        }
+        
+        function downloadAbsorbance3dImage() {
+            const img = document.getElementById('absorbance3dImage');
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'absorbance_3d_plot_' + new Date().getTime() + '.png';
+            link.click();
+        }
+
+        // === TRANSMISSION PLOT FUNCTIONS ===
+        
+        async function generateTransmissionPlot() {
+            const select = document.getElementById('transmissionExperiment');
+            const experimentId = select.value;
+            
+            if (!experimentId) {
+                alert('Please select an experiment');
+                return;
+            }
+            
+            const selectedOption = select.options[select.selectedIndex];
+            const experimentName = selectedOption.textContent;
+            
+            document.getElementById('transmissionLoading').style.display = 'block';
+            document.getElementById('transmissionResults').style.display = 'none';
+            
+            log(`Generating transmission plot for ${experimentId}...`, 'info');
+            
+            try {
+                const response = await fetch('/api/analysis/transmission_plot', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        experiment_id: experimentId,
+                        experiment_name: experimentName
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const img = document.getElementById('transmissionImage');
+                    img.src = 'data:image/png;base64,' + result.image;
+                    document.getElementById('transmissionResults').style.display = 'block';
+                    log('✓ Transmission plot generated (all timepoints ≤60 min)', 'success');
+                } else {
+                    log('✗ Error: ' + result.error, 'error');
+                    if (result.traceback) {
+                        console.error(result.traceback);
+                    }
+                }
+            } catch (error) {
+                log('✗ Error generating transmission plot: ' + error, 'error');
+            } finally {
+                document.getElementById('transmissionLoading').style.display = 'none';
+            }
+        }
+        
+        function downloadTransmissionImage() {
+            const img = document.getElementById('transmissionImage');
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'transmission_plot_' + new Date().getTime() + '.png';
+            link.click();
+        }
+
+        // === DILUTION CURVE FUNCTIONS ===
+
+        async function loadDilutionTimepoints() {
+            const experimentId = document.getElementById('dilutionExperiment').value;
+            const select = document.getElementById('dilutionTimepoint');
+            select.innerHTML = '<option value="">-- Select Timepoint --</option>';
+            if (!experimentId) return;
+            try {
+                const response = await fetch('/api/analysis/get_timepoints', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({experiment_id: experimentId})
+                });
+                const result = await response.json();
+                if (result.success) {
+                    result.timepoints.forEach(tp => {
+                        const opt = document.createElement('option');
+                        opt.value = tp.timepoint_minutes;
+                        opt.textContent = `${tp.timepoint_minutes.toFixed(1)} min (${tp.wells} wells)`;
+                        select.appendChild(opt);
+                    });
+                    // Auto-select last (most likely near-equilibrium)
+                    if (select.options.length > 1)
+                        select.selectedIndex = select.options.length - 1;
+                }
+            } catch (e) {
+                log('\u2717 Could not load timepoints: ' + e, 'error');
+            }
+        }
+
+        async function generateDilutionCurves() {
+            const experimentId = document.getElementById('dilutionExperiment').value;
+            const timepoint = parseFloat(document.getElementById('dilutionTimepoint').value);
+
+            if (!experimentId) { alert('Please select an experiment'); return; }
+            if (isNaN(timepoint)) { alert('Please select a timepoint'); return; }
+
+            const ratios = [8, 10, 12, 15].filter(r =>
+                document.getElementById('ratio_' + r).checked);
+            if (ratios.length === 0) { alert('Select at least one ratio'); return; }
+
+            document.getElementById('dilutionLoading').style.display = 'block';
+            document.getElementById('dilutionResults').style.display = 'none';
+            log(`Generating dilution curves for ${experimentId} at t=${timepoint} min...`, 'info');
+
+            try {
+                const response = await fetch('/api/analysis/dilution_curves', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        experiment_id: experimentId,
+                        timepoint: timepoint,
+                        ratios: ratios
+                    })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    const img = document.getElementById('dilutionImage');
+                    img.src = 'data:image/png;base64,' + result.image;
+                    document.getElementById('dilutionResultsTitle').textContent =
+                        `Dilution (\u0025T) Curves \u2014 t=${timepoint.toFixed(1)} min`;
+                    document.getElementById('dilutionResults').style.display = 'block';
+                    log('\u2713 Dilution curves generated', 'success');
+                } else {
+                    log('\u2717 Error: ' + result.error, 'error');
+                    if (result.traceback) console.error(result.traceback);
+                }
+            } catch (e) {
+                log('\u2717 Error generating dilution curves: ' + e, 'error');
+            } finally {
+                document.getElementById('dilutionLoading').style.display = 'none';
+            }
+        }
+
+        function downloadDilutionImage() {
+            const img = document.getElementById('dilutionImage');
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'dilution_curves_' + new Date().getTime() + '.png';
+            link.click();
+        }
+
+        // === DELETE EXPERIMENT ===
+        
+        async function deleteExperiment(experimentId, experimentName) {
+            if (!confirm(`Are you sure you want to delete experiment "${experimentName}"?\n\nThis will permanently delete all measurements for this experiment. This action cannot be undone.`)) {
+                return;
+            }
+            
+            log(`Deleting experiment ${experimentId}...`, 'info');
+            
+            try {
+                const response = await fetch('/api/delete_experiment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({experiment_id: experimentId})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    log('✓ ' + result.message, 'success');
+                    checkDatabase();
+                    loadAnalysisExperiments();
+                } else {
+                    log('✗ Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                log('✗ Failed to delete experiment: ' + error, 'error');
+            }
+        }
+
+        // === QUERY TAB FUNCTIONS ===
+        
+        async function queryData(event) {
+            event.preventDefault();
+            
+            const queryData = {
+                experiment_id: document.getElementById('queryExperimentId').value,
+                surfactant: document.getElementById('querySurfactant').value,
+                polymer: document.getElementById('queryPolymer').value,
+                min_timepoint: document.getElementById('queryMinTimepoint').value,
+                water_hardness: document.getElementById('queryWaterHardness').value
+            };
+            
+            log('Querying database...', 'info');
+            
+            try {
+                const response = await fetch('/api/query_experiment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(queryData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const resultsDiv = document.getElementById('queryResults');
+                    const resultsContent = document.getElementById('queryResultsContent');
+                    
+                    if (result.row_count === 0) {
+                        resultsContent.innerHTML = '<p>No data found matching criteria</p>';
+                        log('⚠ No results found', 'warning');
+                    } else {
+                        resultsContent.innerHTML = `
+                            <p><strong>Found ${result.row_count} measurements</strong></p>
+                            <a href="/api/download_csv" class="btn btn-primary" download>Download CSV</a>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            ${result.columns.slice(0, 10).map(col => `<th>${col}</th>`).join('')}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${result.preview.map(row => `
+                                            <tr>
+                                                ${result.columns.slice(0, 10).map(col => `<td>${row[col] !== null ? row[col] : ''}</td>`).join('')}
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p><small>Showing first 10 rows and columns. Download CSV for full data.</small></p>
+                        `;
+                        log(`✓ Query returned ${result.row_count} rows`, 'success');
+                    }
+                    
+                    resultsDiv.style.display = 'block';
+                } else {
+                    log('✗ Query error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                log('✗ Query failed: ' + error, 'error');
+            }
+        }
+
+        // ============================================
+        // EXPORT FUNCTIONS
+        // ============================================
+        
+        async function loadExportSummary() {
+            try {
+                const response = await fetch('/api/export/get_summary');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const stats = result.stats;
+                    const summaryContent = document.getElementById('exportSummaryContent');
+                    
+                    summaryContent.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                            <div class="stat-box">
+                                <strong>${stats.total_records.toLocaleString()}</strong>
+                                <span>Total Records</span>
+                            </div>
+                            <div class="stat-box">
+                                <strong>${stats.n_experiments}</strong>
+                                <span>Experiments</span>
+                            </div>
+                            <div class="stat-box">
+                                <strong>${stats.n_surfactants}</strong>
+                                <span>Surfactants</span>
+                            </div>
+                            <div class="stat-box">
+                                <strong>${stats.n_polymers}</strong>
+                                <span>Polymers</span>
+                            </div>
+                            <div class="stat-box">
+                                <strong>${stats.min_time} - ${stats.max_time}</strong>
+                                <span>Time Range (min)</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Populate filter dropdowns
+                    const surfactantSelect = document.getElementById('exportSurfactant');
+                    surfactantSelect.innerHTML = result.surfactants.map(s => 
+                        `<option value="${s}">${s}</option>`
+                    ).join('');
+                    
+                    const polymerSelect = document.getElementById('exportPolymer');
+                    polymerSelect.innerHTML = result.polymers.map(p => 
+                        `<option value="${p}">${p}</option>`
+                    ).join('');
+                    
+                    const experimentsSelect = document.getElementById('exportExperiments');
+                    experimentsSelect.innerHTML = result.experiments.map(e => 
+                        `<option value="${e.experiment_id}">${e.experiment_name} (${e.records} records)</option>`
+                    ).join('');
+                    
+                    log('✓ Export summary loaded', 'success');
+                } else {
+                    document.getElementById('exportSummaryContent').innerHTML = 
+                        '<p style="color: #ff6b6b;">Error loading summary: ' + result.error + '</p>';
+                }
+            } catch (error) {
+                document.getElementById('exportSummaryContent').innerHTML = 
+                    '<p style="color: #ff6b6b;">Failed to load export summary</p>';
+            }
+        }
+        
+        async function downloadExport() {
+            const format = document.getElementById('exportFormat').value;
+            const includeDerived = document.getElementById('exportDerived').value === 'true';
+            
+            // Get selected filters
+            const surfactants = Array.from(document.getElementById('exportSurfactant').selectedOptions)
+                .map(o => o.value);
+            const polymers = Array.from(document.getElementById('exportPolymer').selectedOptions)
+                .map(o => o.value);
+            const experiments = Array.from(document.getElementById('exportExperiments').selectedOptions)
+                .map(o => o.value);
+            
+            const minTime = document.getElementById('exportMinTime').value || null;
+            const maxTime = document.getElementById('exportMaxTime').value || null;
+            
+            log(`Preparing ${format.toUpperCase()} export...`, 'info');
+            
+            try {
+                const response = await fetch('/api/export/download', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        format: format,
+                        experiment_ids: experiments,
+                        surfactants: surfactants,
+                        polymers: polymers,
+                        min_timepoint: minTime,
+                        max_timepoint: maxTime,
+                        include_derived: includeDerived
+                    })
+                });
+                
+                if (response.ok) {
+                    // Download the file
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    
+                    // Get filename from Content-Disposition header or use default
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = `export.${format}`;
+                    if (contentDisposition) {
+                        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+                        if (match) filename = match[1];
+                    }
+                    
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                    
+                    log(`✓ Export downloaded: ${filename}`, 'success');
+                } else {
+                    const error = await response.json();
+                    log(`✗ Export failed: ${error.error}`, 'error');
+                }
+            } catch (error) {
+                log(`✗ Export failed: ${error}`, 'error');
+            }
+        }
+        
+        async function downloadMLExport() {
+            const target = document.getElementById('mlTarget').value;
+            const timeFilter = document.getElementById('mlTimeFilter').value;
+            
+            // Get selected experiments if any
+            const experiments = Array.from(document.getElementById('exportExperiments').selectedOptions)
+                .map(o => o.value);
+            
+            log(`Preparing ML-ready export (target: ${target}, time: ${timeFilter})...`, 'info');
+            
+            try {
+                const response = await fetch('/api/export/ml_ready', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        target: target,
+                        time_filter: timeFilter,
+                        experiment_ids: experiments
+                    })
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'ml_export.zip';
+                    if (contentDisposition) {
+                        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+                        if (match) filename = match[1];
+                    }
+                    
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                    
+                    log(`✓ ML-ready package downloaded: ${filename}`, 'success');
+                } else {
+                    const error = await response.json();
+                    log(`✗ ML export failed: ${error.error}`, 'error');
+                }
+            } catch (error) {
+                log(`✗ ML export failed: ${error}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

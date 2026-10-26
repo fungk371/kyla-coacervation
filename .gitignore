@@ -1,0 +1,100 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Secrets / credentials (never commit) - keep .env.example
+.env
+*.env
+!.env.example
+
+# Virtual Environment
+phase/
+venv/
+env/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db.bak
+
+# Private app state is migrated to BeautyFast storage, not GitHub.
+/*_store*.json
+/phase_meta.json
+/phase_nexus_links.json
+/deposition_models.json
+/microscopy_gallery.json
+/raw_data/
+/lasentec_data/
+/microscopy_images/
+/exports/
+
+# Local reports and generated assets are not part of the web deployment.
+/Reports/
+/poster/
+/Coacervation Project/
+/_dextran_docx_extract/
+/*.png
+/*.txt
+!/requirements.txt
+*.xlsm
+*.pdf
+*.docx
+*.log
+/Dockerfile
+/docker-compose.yml
+/.dockerignore
+
+# Generated presentations and outputs
+*.pptx
+analysis/
+presentations/
+
+# Test and check scripts
+check_*.py
+test_*.py
+example.py
+
+# Temporary analysis scripts
+_tmp*.py
+_tmp_*.py
+analyze_pipetting_improvement.py
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.run.xml
+build_progress.log
+
+# Build logs and generated report intermediates
+Reports/**/*.log
+Reports/**/*.out
+Reports/*.log
+Reports/*.out
+Reports/*.csv
+Reports/*.json
+Reports/*.txt
+analysis_output/
+equilibrium_data.csv
+diagram.png
+
+# Data files
+*.xlsx
+data/*.txt
+data/*.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,25 @@
+# BeautyFast build settings. BeautyFast reads this file from your GitHub repo when it builds your app.
+name: "kyla-coacervation"
+app_type: "flask"  # streamlit, flask, fastapi, nodejs
+runtime: "python-3.12"  # python-3.8, python-3.10, python-3.12, python-3.14, node-18, node-20, node-22, node-23
+startup_command: "gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 1 --timeout 300 coacervation_app:app"
+port: 5000  # must match the port in startup_command
+github_url: "https://github.com/procter-gamble/kyla-coacervation"
+description: ""
+data_classification: "business_use"  # or "hir" (Highly Restricted, e.g. BOM data; needs authorized_groups)
+
+# Optional catalog tags. Ask the app owner which apply; "bf tags" lists the allowed values.
+# business_unit: ["Hair Care"]   # e.g. All Beauty, Hair Care, Personal Care, Skin Care
+# function: ["Formulation"]      # e.g. Beauty Revealed, Formulation, Packaging, Process, Products Research
+business_unit: ["All Beauty"]
+function: ["Beauty Revealed"]
+# tags: ["stability"]
+
+# Non-secret settings, available to the app as environment variables. Secrets go in .env instead:
+# env:
+#   MY_SETTING: "value"
+env: {COACERVATION_DATA_DIR: "/tmp/coacervation", MPLCONFIGDIR: "/tmp/matplotlib", DATABRICKS_SERVER_HOSTNAME: "adb-7620231096555687.7.azuredatabricks.net", DATABRICKS_HTTP_PATH: "/sql/1.0/warehouses/dafdca59f4814dd3"}
+
+# Folders the app writes to while running (contents are lost on restart):
+# writable_paths:
+#   - "/tmp/uploads"
