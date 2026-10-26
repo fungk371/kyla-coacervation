@@ -4,7 +4,7 @@ app_type: "flask"  # streamlit, flask, fastapi, nodejs
 runtime: "python-3.12"  # python-3.8, python-3.10, python-3.12, python-3.14, node-18, node-20, node-22, node-23
 startup_command: "gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 1 --timeout 300 coacervation_app:app"
 port: 5000  # must match the port in startup_command
-github_url: "https://github.com/procter-gamble/kyla-coacervation"
+github_url: "https://github.com/fungk371/kyla-coacervation"
 description: ""
 data_classification: "business_use"  # or "hir" (Highly Restricted, e.g. BOM data; needs authorized_groups)
 
