@@ -2001,7 +2001,7 @@ function downloadDataUrl(url, filename) {
 function toCSV(rows) {
   if (!rows || !rows.length) return '';
   const keys = Object.keys(rows[0]);
-  const esc = v => { v = (v == null ? '' : String(v)); return /[",\n]/.test(v) ? '"' + v.replace(/"g, '""') + '"' : v; };
+  const esc = v => { v = (v == null ? '' : String(v)); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   return [keys.join(',')].concat(rows.map(r => keys.map(k => esc(r[k])).join(','))).join('\n');
 }
 
@@ -2526,7 +2526,7 @@ function cmpExportCsv() {
   const cols = cmpState.rowKind === 'request'
     ? ['request_id', 'requester', 'status', 'department', 'batch_id', 'batchdesc', 'test_type', 'parameter', 'avg_value', 'std_dev', 'n_replicates']
     : ['group_id', 'test_type', 'parameter', 'avg_value', 'std_dev', 'n', 'n_batches'];
-  const q = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"g, '""') + '"' : s; };
+  const q = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   const csv = [cols.join(',')].concat(rows.map(r => cols.map(c => q(r[c])).join(','))).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
@@ -2632,7 +2632,7 @@ function corrScatterSvg(j, colorByChassis) {
 function corrExportCsv() {
   const pts = corrState.points || [];
   if (!pts.length) return;
-  const q = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"g, '""') + '"' : s; };
+  const q = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   const header = ['batch_id', 'batchdesc', 'chassis', corrState.xlabel, corrState.ylabel].map(q).join(',');
   const csv = [header].concat(pts.map(p => [p.batch_id, p.batchdesc, p.chassis, p.x, p.y].map(q).join(','))).join('\n');
   const a = document.createElement('a');
@@ -3444,23 +3444,23 @@ function makeOrganizer(prefix, opts) {
     pageList.forEach((p) => {
       ['1', '2'].forEach(t => {
         const r = p.troughs[t] || {};
-        html += `<tr data-plate="${p.plate.replace(/"g, '&quot;')}" data-trough="${t}">`
+        html += `<tr data-plate="${p.plate.replace(/"/g, '&quot;')}" data-trough="${t}">`
           + (t === '1'
-            ? `<td style="text-align:left; font-size:11px;"><input class="ptPlateName" style="width:170px; font-size:11px;" value="${p.plate.replace(/"g, '&quot;')}"><br><a href="#" class="ptRename" style="font-size:11px;">rename</a> &middot; <a href="#" class="ptDelete" style="font-size:11px; color:#c0392b;">delete</a><div class="muted" style="font-size:10px;">uploaded ${p.modified_str || '—'}</div></td>`
+            ? `<td style="text-align:left; font-size:11px;"><input class="ptPlateName" style="width:170px; font-size:11px;" value="${p.plate.replace(/"/g, '&quot;')}"><br><a href="#" class="ptRename" style="font-size:11px;">rename</a> &middot; <a href="#" class="ptDelete" style="font-size:11px; color:#c0392b;">delete</a><div class="muted" style="font-size:10px;">uploaded ${p.modified_str || '—'}</div></td>`
             : `<td></td>`)
           + `<td>${t} <span class="muted">${t === '1' ? '(A–D)' : '(E–H)'}</span></td>`
-          + `<td><input class="ptName" style="width:180px;" value="${(r.name || '').replace(/"g, '&quot;')}" placeholder="searchable name"></td>`
+          + `<td><input class="ptName" style="width:180px;" value="${(r.name || '').replace(/"/g, '&quot;')}" placeholder="searchable name"></td>`
           + `<td>${tagSelectHtml(r.tag || '')}</td>`
-          + `<td><input class="ptBatch" style="width:150px;" value="${(r.batch_id || '').replace(/"g, '&quot;')}"> <a href="#" class="ptNexus" style="font-size:11px;" title="Pull composition from Nexus by BatchID">&#9906; Nexus</a><div class="ptNexusOut" style="font-size:11px;"></div></td>`
-          + `<td><input class="ptSid" style="width:150px;" value="${(r.sample_id || '').replace(/"g, '&quot;')}" placeholder="S-…"></td>`
-          + `<td><input class="ptDesc" style="width:280px;" value="${(r.description || '').replace(/"g, '&quot;')}"></td>`
-          + `<td><input class="ptChassis" style="width:140px;" value="${(r.chassis || '').replace(/"g, '&quot;')}" placeholder="GH150 EED0"></td>`
-          + `<td><input class="ptCoSurfPct" style="width:70px;" value="${(r.co_surfactant_pct || '').replace(/"g, '&quot;')}" placeholder="3.6%"></td>`
-          + `<td><input class="ptCoSurf" style="width:95px;" value="${(r.co_surfactant || '').replace(/"g, '&quot;')}" placeholder="LAPB"></td>`
-          + `<td><input class="ptConc" style="width:70px;" value="${(r.concentration || '').replace(/"g, '&quot;')}" placeholder="1%"></td>`
-          + `<td><input class="ptComp" style="width:110px;" value="${(r.component || '').replace(/"g, '&quot;')}" placeholder="CD2"></td>`
-          + `<td><input class="ptEbr" style="width:120px;" value="${(r.ebr_batch_id || '').replace(/"g, '&quot;')}" placeholder="EBR batch"></td>`
-          + `<td><input class="ptEnovia" style="width:120px;" value="${(r.enovia_id || '').replace(/"g, '&quot;')}" placeholder="ENOVIA"></td>`
+          + `<td><input class="ptBatch" style="width:150px;" value="${(r.batch_id || '').replace(/"/g, '&quot;')}"> <a href="#" class="ptNexus" style="font-size:11px;" title="Pull composition from Nexus by BatchID">&#9906; Nexus</a><div class="ptNexusOut" style="font-size:11px;"></div></td>`
+          + `<td><input class="ptSid" style="width:150px;" value="${(r.sample_id || '').replace(/"/g, '&quot;')}" placeholder="S-…"></td>`
+          + `<td><input class="ptDesc" style="width:280px;" value="${(r.description || '').replace(/"/g, '&quot;')}"></td>`
+          + `<td><input class="ptChassis" style="width:140px;" value="${(r.chassis || '').replace(/"/g, '&quot;')}" placeholder="GH150 EED0"></td>`
+          + `<td><input class="ptCoSurfPct" style="width:70px;" value="${(r.co_surfactant_pct || '').replace(/"/g, '&quot;')}" placeholder="3.6%"></td>`
+          + `<td><input class="ptCoSurf" style="width:95px;" value="${(r.co_surfactant || '').replace(/"/g, '&quot;')}" placeholder="LAPB"></td>`
+          + `<td><input class="ptConc" style="width:70px;" value="${(r.concentration || '').replace(/"/g, '&quot;')}" placeholder="1%"></td>`
+          + `<td><input class="ptComp" style="width:110px;" value="${(r.component || '').replace(/"/g, '&quot;')}" placeholder="CD2"></td>`
+          + `<td><input class="ptEbr" style="width:120px;" value="${(r.ebr_batch_id || '').replace(/"/g, '&quot;')}" placeholder="EBR batch"></td>`
+          + `<td><input class="ptEnovia" style="width:120px;" value="${(r.enovia_id || '').replace(/"/g, '&quot;')}" placeholder="ENOVIA"></td>`
           + `</tr>`;
       });
     });
@@ -3596,7 +3596,7 @@ function renderDepoModels(models) {
       + `<td>${DEPO_PRED_LABELS[m.predictor] || m.predictor}</td><td>${fit}</td>`
       + `<td>${m.r2 ?? ''}</td><td style="text-align:left;">${m.chassis_context || ''}</td>`
       + `<td style="text-align:left;">${m.source || ''}</td>`
-      + `<td><a href="#" class="depoDel" data-name="${(m.name || '').replace(/"g, '&quot;')}" style="color:#8a1c1c;">delete</a></td>`;
+      + `<td><a href="#" class="depoDel" data-name="${(m.name || '').replace(/"/g, '&quot;')}" style="color:#8a1c1c;">delete</a></td>`;
     tb.appendChild(tr);
   });
   tb.querySelectorAll('.depoDel').forEach(a => a.addEventListener('click', async e => {
@@ -3724,7 +3724,7 @@ function renderLib() {
     const tr = document.createElement('tr');
     tr.innerHTML = `<td><input type="checkbox" class="libChk" data-id="${r.id}" ${libSel.has(r.id) ? 'checked' : ''}></td>` +
       `<td>${r.run}</td><td>${r.sample}</td>` +
-      `<td title="${(r.consumer_feedback || '').replace(/"g, '&quot;')}">${r.product || ''}</td>` +
+      `<td title="${(r.consumer_feedback || '').replace(/"/g, '&quot;')}">${r.product || ''}</td>` +
       `<td>${r.category ? '<span style="font-size:11px; font-weight:700; color:#8a1c1c;">' + r.category + '</span>' : ''}</td>` +
       `<td>${r.chassis || ''}</td>` +
       `<td>${r.variable || ''}</td><td>${r.polymer || ''}</td><td>${r.surfactant || ''}</td>` +
@@ -3911,8 +3911,8 @@ async function expLoadSuggestions() {
     body: JSON.stringify({ chassis: [], polymers: [], timepoint: $('expTime').value,
       auc_dil_1: $('expDil1').value, auc_dil_2: $('expDil2').value }) })).json();
   if (j.ok) {
-    $('expChassisSuggest').innerHTML = (j.suggest.chassis || []).map(c => `<option value="${c.replace(/"g, '&quot;')}">`).join('');
-    $('expPolymerSuggest').innerHTML = (j.suggest.polymers || []).map(c => `<option value="${c.replace(/"g, '&quot;')}">`).join('');
+    $('expChassisSuggest').innerHTML = (j.suggest.chassis || []).map(c => `<option value="${c.replace(/"/g, '&quot;')}">`).join('');
+    $('expPolymerSuggest').innerHTML = (j.suggest.polymers || []).map(c => `<option value="${c.replace(/"/g, '&quot;')}">`).join('');
     $('expHint').textContent = `Loaded ${j.suggest.chassis.length} chassis and ${j.suggest.polymers.length} polymer names as suggestions.`;
   }
 }
@@ -4062,7 +4062,7 @@ function renderCtrlTable() {
     const tr = document.createElement('tr');
     tr.innerHTML = `<td style="text-align:left;">${s.name}</td><td style="text-align:left;">${s.file || ''}</td>`
       + `<td>${s.sheet || ''}</td><td>${s.trough}</td>`
-      + `<td><a href="#" class="ctrlDel" data-name="${(s.name || '').replace(/"g, '&quot;')}" style="color:#8a1c1c;">delete</a></td>`;
+      + `<td><a href="#" class="ctrlDel" data-name="${(s.name || '').replace(/"/g, '&quot;')}" style="color:#8a1c1c;">delete</a></td>`;
     tb.appendChild(tr);
   });
   $('ctrlTable').style.display = 'table';
@@ -4115,7 +4115,7 @@ const PROD_CAT_COLORS = {
   control: '#25405e', development: '#5a3d7a'
 };
 function prodCatLabel(key) { const c = prodCats.find(c => c.key === key); return c ? c.label : key; }
-function esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"g, '&quot;'); }
+function esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 async function loadProducts() {
   const j = await (await fetch('products')).json();
   if (!j.ok) return;
